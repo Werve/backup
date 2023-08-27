@@ -1,5 +1,6 @@
 #!/system/bin/sh
 # Written by Draco (tytydraco @ GitHub)
+# Modded by Werve 
 
 # Where to backup by default
 BACKUP_PATH="/sdcard/backup"
@@ -20,6 +21,7 @@ usage() {
 Options:
   -h			Show usage
   -d			Backup path (default: $BACKUP_PATH)
+  -l			List all partitions
 
 Partition Examples:
   all
@@ -34,7 +36,21 @@ Partition Examples:
 # Check for root permissions
 [[ `id -u` -ne 0 ]] && err "No root permissions. Exiting."
 
-while getopts ":h:d" opt; do
+# Try multiple paths 
+	VALIDPATH="/dev/block/bootdevice/by-name"
+	[[ ! -L "$VALIDPATH" ]] && VALIDPATH="/dev/block/by-name"
+
+list() {
+	PARTS=`ls $VALIDPATH/`
+
+	# Print partitions found 
+	for part in $PARTS
+	do
+		dbg "$part"
+	done
+} 
+
+while getopts "h:d:l" opt; do
 	case $opt in
 		h)
 			usage
@@ -42,6 +58,10 @@ while getopts ":h:d" opt; do
 			;;
 		d)
 			BACKUP_PATH="$OPTARG"
+			;;
+		l)
+			list
+			exit 0
 			;;
 		*)
 			usage
@@ -59,7 +79,7 @@ PARTS="$@"
 [[ -z "$@" ]] && err "No partitions specified. Exiting."
 
 # Backup all partitions
-[[ "$PARTS" == "all" ]] && PARTS=`ls /dev/block/bootdevice/by-name/`
+[[ "$PARTS" == "all" ]] && PARTS=`ls $VALIDPATH/`
 
 mkdir -p "$BACKUP_PATH"
 
@@ -69,7 +89,7 @@ do
 	dbg "Backing up $part..."
 
 	# Get path
-	PARTPATH="/dev/block/bootdevice/by-name/$part"
+	PARTPATH="$VALIDPATH/$part"
 	[[ ! -L "$PARTPATH" ]] && PARTPATH="$PARTPATH$SLOT"
 
 	# Check if exists
